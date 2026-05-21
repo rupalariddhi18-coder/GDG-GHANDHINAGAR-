@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, ThumbsUp, Send, Flame, Heart, Award, Sparkles, Hash, Plus, Trash2, ArrowUpRight, HelpCircle } from 'lucide-react';
 import { Post, Comment, UserProfile } from '../types';
 import { TEAMS_LIST } from '../data';
+import StoryReelsLounge from './StoryReelsLounge';
 
 interface CommunitySectionProps {
   posts: Post[];
@@ -11,6 +12,8 @@ interface CommunitySectionProps {
   onAddPost: (post: Omit<Post, 'id' | 'likes' | 'comments' | 'reactions' | 'timestamp'>) => void;
   onAddComment: (postId: string, commentContent: string) => void;
   onAddReaction: (postId: string, reactionType: 'fire' | 'heart' | 'clap' | 'like') => void;
+  onAddPoints: (pts: number) => void;
+  onTriggerToast: (msg: string) => void;
 }
 
 export default function CommunitySection({ 
@@ -19,7 +22,9 @@ export default function CommunitySection({
   initialFilter,
   onAddPost, 
   onAddComment, 
-  onAddReaction 
+  onAddReaction,
+  onAddPoints,
+  onTriggerToast
 }: CommunitySectionProps) {
   const [selectedGroup, setSelectedGroup] = useState<string>(initialFilter || 'all');
   const [isCreatingPost, setIsCreatingPost] = useState(false);
@@ -228,6 +233,9 @@ export default function CommunitySection({
       {/* 2. RIGHT CONSOLE: DISCUSSIONS (Col 8) */}
       <div className="lg:col-span-8 space-y-6" id="discussion-circles-stream">
         
+        {/* REELS & STORIES PLATFORM LOUNGE */}
+        <StoryReelsLounge onAddPoints={onAddPoints} onTriggerToast={onTriggerToast} />
+
         {/* POST DRAFTS BOX WITH AI GENERATIVE ASSIST */}
         <div className="rounded-2xl border border-slate-800 bg-[#0c0a1a]/40 backdrop-blur p-5">
           {!isCreatingPost ? (

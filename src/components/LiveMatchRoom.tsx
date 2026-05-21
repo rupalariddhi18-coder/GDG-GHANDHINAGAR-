@@ -17,6 +17,7 @@ interface LiveMatchRoomProps {
   onAddPoints: (points: number) => void;
   onUnlockBadge: (badgeId: string) => void;
   onVotePrediction: (sport: SportType, option: 'teamA' | 'teamB' | 'draw') => void;
+  onTriggerToast: (msg: string, type: 'success' | 'info' | 'warning') => void;
 }
 
 interface FloatingEmoji {
@@ -37,6 +38,15 @@ interface SimulatedBall {
   batsman: string;
   bowler: string;
 }
+
+const SUPER_OVER_BALLS = [
+  { over: "0.1", score: "2/0", type: "2" as const, runs: 2, isWicket: false, batsman: "MS Dhoni", bowler: "Jasprit Bumrah", desc: "Bumrah fires a roaring cutter outside off. Dhoni punches robustly to deep backward point for a quick couple of runs! High intensity stadium start." },
+  { over: "0.2", score: "8/0", type: "6" as const, runs: 6, isWicket: false, batsman: "MS Dhoni", bowler: "Jasprit Bumrah", desc: "CRACKED! Bumrah goes for the yorker but misses by inches. MS Dhoni unleashes a spectacular helicopter slap straight into the sight screen! 112 METERS SIX! Absolute euphoria in Chepauk!" },
+  { over: "0.3", score: "9/0", type: "1" as const, runs: 1, isWicket: false, batsman: "MS Dhoni", bowler: "Jasprit Bumrah", desc: "Tight yorker on leg pole, Dhoni manages to squeeze it to fine leg to rotate strike. Fans screaming Dhoni's name in stadium-wide choruses!" },
+  { over: "0.4", score: "9/1", type: "W" as const, runs: 0, isWicket: true, batsman: "Shivam Dube", bowler: "Jasprit Bumrah", desc: "OUT! Bumrah strikes back! A searing slow dipping yorker bowls Shivam Dube clean through the gate! Playoff tension at maximum limit! Bumrah celebrates with arms stretched high!" },
+  { over: "0.5", score: "13/1", type: "4" as const, runs: 4, isWicket: false, batsman: "R. Jadeja", bowler: "Jasprit Bumrah", desc: "EDGED AND FOUR! Jadeja attempts a massive heave, gets a thick thick outside edge that flies over short third-man for a crucial boundary! Jadeja punches his glove." },
+  { over: "0.6", score: "19/1", type: "6" as const, runs: 6, isWicket: false, batsman: "R. Jadeja", bowler: "Jasprit Bumrah", desc: "HAMMERED FOR SIX! CSK WINS THE COVETED SUPER OVER DUEL! Bumrah misses length slightly and Jadeja lofts it high over deep midwicket! Pure visual euphoria at Chepauk! Fans dancing in the rain!" }
+];
 
 const MATCH_BALLS_SIMULATION: Record<SportType, SimulatedBall[]> = {
   csk_mi: [
@@ -79,7 +89,8 @@ export default function LiveMatchRoom({
   userProfile,
   onAddPoints,
   onUnlockBadge,
-  onVotePrediction
+  onVotePrediction,
+  onTriggerToast
 }: LiveMatchRoomProps) {
   // Real-time ticking scoreboard states
   const [currentBallIdx, setCurrentBallIdx] = useState<number>(0);
@@ -132,6 +143,52 @@ export default function LiveMatchRoom({
   const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([]);
   const emojiIdCounter = useRef(0);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  // --- STADIUM ADVANCED ANALYTICS STATES ---
+  const [commentaryFilter, setCommentaryFilter] = useState<'all' | 'boundary' | 'wicket' | 'special'>('all');
+  const [superOverActive, setSuperOverActive] = useState<boolean>(false);
+  const [superOverBallIdx, setSuperOverBallIdx] = useState<number>(0);
+  
+  // DLS Calculator states
+  const [dlsFirstInningsScore, setDlsFirstInningsScore] = useState<number>(195);
+  const [dlsShortenedOvers, setDlsShortenedOvers] = useState<number>(15);
+  const [dlsWicketsLost, setDlsWicketsLost] = useState<number>(3);
+  const [dlsShowModal, setDlsShowModal] = useState<boolean>(false);
+
+  // Handle super over ticker increments
+  useEffect(() => {
+    if (!superOverActive) return;
+    const timer = setInterval(() => {
+      setSuperOverBallIdx(prev => {
+        const nextIdx = (prev + 1) % SUPER_OVER_BALLS.length;
+        const currentBall = SUPER_OVER_BALLS[nextIdx];
+        
+        // Voice speech commentary
+        if (voiceCommentaryEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
+          try {
+            window.speechSynthesis.cancel();
+            const cleanSpeech = `Super Over. Ball ${currentBall.over}. ${currentBall.desc.replace(/[#*]/g, '')}`;
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(cleanSpeech));
+          } catch (e) {}
+        }
+        
+        // Custom screen vibration and special glows for big moments
+        if (currentBall.type === '6') {
+          setScreenEffect('six');
+          setTimeout(() => setScreenEffect('normal'), 2500);
+          onAddPoints(10);
+        } else if (currentBall.type === 'W') {
+          setScreenEffect('wicket');
+          setTimeout(() => setScreenEffect('normal'), 2500);
+          onAddPoints(5);
+        }
+        
+        return nextIdx;
+      });
+    }, 6000); // Super over updates every 6 seconds!
+    
+    return () => clearInterval(timer);
+  }, [superOverActive, voiceCommentaryEnabled]);
 
   // STADIUM ACOUSTICS SYNTHESIZER
   const playStadiumSynth = (type: 'horn' | 'cheer' | 'vuvuzela' | 'drum') => {
@@ -630,12 +687,14 @@ export default function LiveMatchRoom({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
-                <span className="text-[10px] sm:text-xs font-mono font-black text-rose-450 uppercase tracking-widest">{match.league}</span>
+                <span className="text-[10px] sm:text-xs font-mono font-black text-rose-455 uppercase tracking-widest">
+                  {superOverActive ? "🏆 COVETED IPL GOLD SUPER OVER DUEL" : match.league}
+                </span>
               </div>
               
               <div className="rounded-full bg-slate-900 px-3 py-1 flex items-center gap-1.5 border border-slate-800 text-[10px] font-black text-slate-300">
                 <Clock className="h-3.5 w-3.5 text-yellow-400 animate-spin" />
-                <span>BALL TICK IN: <strong className="text-yellow-400 font-mono font-black">{timeToNextBall}S</strong></span>
+                <span>BALL TICK IN: <strong className="text-yellow-400 font-mono font-black">{superOverActive ? 6 : timeToNextBall}S</strong></span>
               </div>
             </div>
 
@@ -644,32 +703,36 @@ export default function LiveMatchRoom({
               {/* Home Team */}
               <div className="col-span-4 text-center space-y-1">
                 <span className="text-3xl block select-none">
-                  {activeSport === 'csk_mi' ? '🦁' : activeSport === 'rcb_kkr' ? '👑' : '🧡'}
+                  🦁
                 </span>
                 <span className="text-sm font-black text-white uppercase tracking-tight block">
-                  {teams.codeA}
+                  CSK
                 </span>
-                <p className="text-[9px] text-yellow-500 font-extrabold uppercase tracking-widest">Home</p>
+                <p className="text-[9px] text-yellow-500 font-extrabold uppercase tracking-widest">{superOverActive ? "BATTER" : "Home"}</p>
               </div>
 
               {/* Centered Score */}
               <div className="col-span-4 text-center space-y-2">
-                <span className="text-[8px] font-mono font-bold text-slate-500 tracking-widest uppercase">RADAR SCOREBOARD</span>
-                <h3 className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tighter shrink-0">
-                  {tickerScore}
+                <span className="text-[8px] font-mono font-bold text-slate-500 tracking-widest uppercase">
+                  {superOverActive ? "🔥 SUPER OVER ACTION" : "RADAR SCOREBOARD"}
+                </span>
+                <h3 className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tighter shrink-0 animate-pulse">
+                  {superOverActive ? SUPER_OVER_BALLS[superOverBallIdx].score : tickerScore}
                 </h3>
-                <span className="text-[10px] font-mono font-bold text-slate-450 block">{tickerOver} Overs</span>
+                <span className="text-[10px] font-mono font-bold text-slate-450 block">
+                  {superOverActive ? `${SUPER_OVER_BALLS[superOverBallIdx].over} Overs` : `${tickerOver} Overs`}
+                </span>
               </div>
 
               {/* Away Team */}
               <div className="col-span-4 text-center space-y-1">
                 <span className="text-3xl block select-none">
-                  {activeSport === 'csk_mi' ? '🌀' : activeSport === 'rcb_kkr' ? '🔮' : '⚡'}
+                  🌀
                 </span>
                 <span className="text-sm font-black text-white uppercase tracking-tight block">
-                  {teams.codeB}
+                  MI
                 </span>
-                <p className="text-[9px] text-[#3b82f6] font-extrabold uppercase tracking-widest">Away</p>
+                <p className="text-[9px] text-[#3b82f6] font-extrabold uppercase tracking-widest">{superOverActive ? "BOWLER" : "Away"}</p>
               </div>
             </div>
 
@@ -677,42 +740,94 @@ export default function LiveMatchRoom({
             <div className="mt-4 flex flex-wrap items-center justify-between gap-4 py-3 border-t border-slate-900">
               <div className="flex items-center gap-2 select-none">
                 <span className="text-[9px] font-mono text-slate-500 uppercase font-black tracking-widest">THIS OVER:</span>
-                <div className="flex gap-1.5">
-                  {lastBallsInOver.map((ball, idx) => (
-                    <span 
-                      key={idx}
-                      className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-[10px] font-black font-mono shadow ${
-                        ball.type === 'W' 
-                          ? 'bg-rose-500 text-white border border-rose-400' 
-                          : ball.type === '6' 
-                            ? 'bg-yellow-400 text-slate-950 font-black ring-4 ring-yellow-400/20' 
-                            : ball.type === '4' 
-                              ? 'bg-green-500 text-white font-extrabold' 
-                              : ball.type === 'DRS'
-                                ? 'bg-orange-500 text-white animate-pulse'
-                                : 'bg-slate-900 text-slate-300 border border-slate-800'
-                      }`}
-                      title={ball.desc}
-                    >
-                      {ball.type === 'DRS' ? 'D' : ball.type}
-                    </span>
-                  ))}
+                <div className="flex gap-1.5 animate-pulse">
+                  {superOverActive ? (
+                    SUPER_OVER_BALLS.map((ball, idx) => {
+                      const isComplete = idx <= superOverBallIdx;
+                      return (
+                        <span 
+                          key={idx}
+                          className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-[10px] font-black font-mono shadow transition-all duration-300 ${
+                            !isComplete 
+                              ? 'bg-slate-950 text-slate-700 border border-slate-900'
+                              : ball.type === 'W' 
+                                ? 'bg-rose-500 text-white' 
+                                : ball.type === '6' 
+                                  ? 'bg-yellow-405 text-slate-950 font-black ring-4 ring-yellow-450/15' 
+                                  : ball.type === '4' 
+                                    ? 'bg-green-500 text-white' 
+                                    : 'bg-slate-800 text-slate-300'
+                          }`}
+                          title={ball.desc}
+                        >
+                          {ball.type}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    lastBallsInOver.map((ball, idx) => (
+                      <span 
+                        key={idx}
+                        className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-[10px] font-black font-mono shadow ${
+                          ball.type === 'W' 
+                            ? 'bg-rose-500 text-white border border-rose-400' 
+                            : ball.type === '6' 
+                              ? 'bg-yellow-400 text-slate-950 font-black ring-4 ring-yellow-400/20' 
+                              : ball.type === '4' 
+                                ? 'bg-green-500 text-white font-extrabold' 
+                                : ball.type === 'DRS'
+                                  ? 'bg-orange-500 text-white animate-pulse'
+                                  : 'bg-slate-900 text-slate-300 border border-slate-800'
+                        }`}
+                        title={ball.desc}
+                      >
+                        {ball.type === 'DRS' ? 'D' : ball.type}
+                      </span>
+                    ))
+                  )}
                 </div>
               </div>
 
-              {/* Toss / Conditions */}
-              <span className="text-[10px] font-extrabold text-slate-400 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1">
-                🏏 Toss: MI won toss & elected to bowl • Dew: Heavy 🌧️
-              </span>
+              {/* Advanced Controls & Toss Bar */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    setSuperOverActive(!superOverActive);
+                    if (!superOverActive) {
+                      setSuperOverBallIdx(0);
+                      onAddPoints(10);
+                      playStadiumSynth('horn');
+                    }
+                  }}
+                  className={`text-[9px] font-black uppercase tracking-wide border rounded px-2.5 py-1 transition transform hover:scale-105 cursor-pointer ${
+                    superOverActive 
+                      ? 'bg-gradient-to-r from-red-655 to-amber-500 border-yellow-500 text-slate-950 font-extrabold' 
+                      : 'bg-[#1e1548] hover:bg-[#281c5d] border-fuchsia-500/25 text-fuchsia-300'
+                  }`}
+                >
+                  ⚡ {superOverActive ? 'Return to 20-Over' : 'Trigger Super Over!'}
+                </button>
+
+                <button
+                  onClick={() => setDlsShowModal(true)}
+                  className="text-[9px] font-black uppercase tracking-wide border border-dashed border-cyan-550/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded px-2.5 py-1 cursor-pointer transition transform hover:scale-105"
+                >
+                  🌧️ DLS Calculator
+                </button>
+
+                <span className="text-[10px] font-extrabold text-slate-400 bg-slate-900 border border-slate-800 rounded px-2.5 py-1">
+                  🏏 Toss: MI won toss • Dew: Heavy 🌧️
+                </span>
+              </div>
             </div>
 
             {/* Run Rate indices */}
             <div className="mt-4 grid grid-cols-2 gap-4 text-center">
-              <div className="p-2 rounded-xl bg-slate-900/30 border border-slate-900 text-xs text-slate-400 uppercase tracking-wider font-bold">
-                Current Run Rate: <strong className="text-yellow-400 font-mono font-black">CRR: 10.28</strong>
+              <div className="p-2 rounded-xl bg-slate-900/30 border border-slate-800 text-xs text-slate-400 uppercase tracking-wider font-bold">
+                Current Run Rate: <strong className="text-yellow-400 font-mono font-black">{superOverActive ? 'CRR: 15.00' : 'CRR: 10.28'}</strong>
               </div>
-              <div className="p-2 rounded-xl bg-slate-900/30 border border-slate-900 text-xs text-slate-400 uppercase tracking-wider font-bold">
-                Required Run Rate: <strong className="text-[#a855f7] font-mono font-black">RRR: 11.45</strong>
+              <div className="p-2 rounded-xl bg-slate-900/30 border border-slate-800 text-xs text-slate-400 uppercase tracking-wider font-bold">
+                Required Run Rate: <strong className="text-[#a855f7] font-mono font-black">{superOverActive ? `TARGET: 16 (Need ${Math.max(0, 16 - (SUPER_OVER_BALLS[superOverBallIdx].runs + (superOverBallIdx > 0 ? SUPER_OVER_BALLS.slice(0, superOverBallIdx).reduce((a, b) => a + b.runs, 0) : 0)))} off ${Math.max(0, 6 - superOverBallIdx)}b)` : 'RRR: 11.45'}</strong>
               </div>
             </div>
           </div>
@@ -745,31 +860,158 @@ export default function LiveMatchRoom({
               <div className="space-y-6" id="match-live-dashboard">
                 
                 {/* DYNAMIC SHIFTING WINNING PROBABILITY COMPONENT */}
-                <div className="rounded-2xl border border-slate-900 bg-slate-950/40 p-5 space-y-3">
+                <div className="rounded-2xl border border-slate-900 bg-slate-950/40 p-5 space-y-4">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-xs font-black text-white uppercase tracking-wider">Live Winning Probability Swing</h4>
-                    <span className="text-[10px] font-mono text-yellow-400">UPDATES EVERY BALL DELIVERED</span>
+                    <div>
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <TrendingUp className="h-4 w-4 text-yellow-400" />
+                        Live Winning Probability Swing & Momentum Wave
+                      </h4>
+                      <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Real-time stadium swing calculated by ball-by-ball momentum indices</p>
+                    </div>
+                    <span className="text-[9px] font-mono bg-yellow-405/10 text-yellow-400 px-2 py-0.5 rounded border border-yellow-400/10">UPDATES EVERY SECOND</span>
                   </div>
 
                   {/* Swinger indicator bar */}
-                  <div className="space-y-2">
-                    <div className="h-6 w-full rounded-full bg-slate-900 overflow-hidden flex text-[10px] font-mono font-black relative border border-slate-800">
+                  <div className="space-y-4">
+                    <div className="h-6.5 w-full rounded-full bg-slate-900 overflow-hidden flex text-[10px] font-mono font-black relative border border-slate-800">
                       <div 
-                        className="bg-yellow-400 text-slate-950 flex items-center justify-center transition-all duration-700 ease-out"
+                        className="bg-gradient-to-r from-yellow-500 to-yellow-400 text-slate-950 flex items-center justify-center transition-all duration-700 ease-out font-black"
                         style={{ width: `${calculatedWinPctA}%` }}
                       >
-                        {calculatedWinPctA >= 15 ? `${teams.codeA} ${calculatedWinPctA}%` : ''}
+                        {calculatedWinPctA >= 15 ? `🦁 CSK: ${calculatedWinPctA}%` : ''}
                       </div>
                       <div 
-                        className="bg-[#3b82f6] text-white flex items-center justify-center transition-all duration-700 ease-out"
+                        className="bg-gradient-to-r from-blue-600 to-[#3b82f6] text-white flex items-center justify-center transition-all duration-700 ease-out font-black"
                         style={{ width: `${calculatedWinPctB}%` }}
                       >
-                        {calculatedWinPctB >= 15 ? `${teams.codeB} ${calculatedWinPctB}%` : ''}
+                        {calculatedWinPctB >= 15 ? `🌀 MI: ${calculatedWinPctB}%` : ''}
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold leading-relaxed text-center">
-                      🏏 Sentiment Analysis: Chasing side has a <strong className="text-yellow-400">high leveraged bounce</strong> due to death-over batters at strike!
-                    </p>
+
+                    {/* SVG GRAPH EMBED */}
+                    <div className="rounded-xl border border-slate-900 bg-black/80 p-3.5 space-y-2">
+                      <div className="flex justify-between items-center text-[9px] font-mono tracking-widest text-slate-500">
+                        <span>🦁 CSK FAVORABLE</span>
+                        <span>💎 EQUILIBRIUM (50/50)</span>
+                        <span>🌀 MI FAVORABLE</span>
+                      </div>
+
+                      {/* Line chart */}
+                      <div className="relative h-16 w-full flex items-center">
+                        <div className="absolute inset-x-0 h-0.5 bg-dashed border-t border-slate-800/60 top-1/2 pointer-events-none" />
+                        <svg className="h-full w-full overflow-visible" preserveAspectRatio="none">
+                          <defs>
+                            <linearGradient id="glow-grad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#eab308" stopOpacity="0.25" />
+                              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                            </linearGradient>
+                          </defs>
+                          {/* Momentum Wave Curve */}
+                          <polyline
+                            fill="none"
+                            stroke="url(#glow-grad)"
+                            strokeWidth="1.5"
+                            points={(() => {
+                              const list = superOverActive 
+                                ? SUPER_OVER_BALLS 
+                                : customCommentary.length > 0 
+                                  ? [...customCommentary].reverse()
+                                  : [];
+                              const pts = list.map((ball, i) => {
+                                let val = 50;
+                                if (ball.type === '6') val += 30;
+                                else if (ball.type === '4') val += 15;
+                                else if (ball.type === 'W') val -= 40;
+                                else if (ball.type === '1') val += 4;
+                                return Math.max(10, Math.min(90, val + Math.sin(i) * 8));
+                              });
+                              if (pts.length < 2) return "0,30 400,30";
+                              return pts.map((val, idx) => {
+                                const x = (idx / (pts.length - 1)) * 500;
+                                const y = 64 - (val / 100) * 64;
+                                return `${x},${y}`;
+                              }).join(' ');
+                            })()}
+                            className="stroke-yellow-405"
+                          />
+                          {/* Polyfill stroke zone */}
+                          <polyline
+                            fill="url(#glow-grad)"
+                            stroke="none"
+                            points={(() => {
+                              const list = superOverActive 
+                                ? SUPER_OVER_BALLS 
+                                : customCommentary.length > 0 
+                                  ? [...customCommentary].reverse()
+                                  : [];
+                              const pts = list.map((ball, i) => {
+                                let val = 50;
+                                if (ball.type === '6') val += 30;
+                                else if (ball.type === '4') val += 15;
+                                else if (ball.type === 'W') val -= 40;
+                                return Math.max(10, Math.min(90, val + Math.sin(i) * 8));
+                              });
+                              if (pts.length < 2) return "0,64 400,64";
+                              const path = pts.map((val, idx) => {
+                                const x = (idx / (pts.length - 1)) * 500;
+                                const y = 64 - (val / 100) * 64;
+                                return `${x},${y}`;
+                              }).join(' ');
+                              return `0,64 ${path} 500,64`;
+                            })()}
+                          />
+
+                          {/* Glowing momentum indicator circles for large events */}
+                          {(() => {
+                            const list = superOverActive 
+                              ? SUPER_OVER_BALLS 
+                              : customCommentary.length > 0 
+                                ? [...customCommentary].reverse()
+                                : [];
+                            return list.map((ball, idx) => {
+                              let val = 50;
+                              if (ball.type === '6') val += 30;
+                              else if (ball.type === '4') val += 15;
+                              else if (ball.type === 'W') val -= 40;
+                              const yVal = Math.max(10, Math.min(90, val + Math.sin(idx) * 8));
+                              const x = (idx / Math.max(1, list.length - 1)) * 500;
+                              const y = 64 - (yVal / 100) * 64;
+                              const isMajor = ball.type === '6' || ball.type === 'W';
+                              if (!isMajor) return null;
+                              return (
+                                <g key={idx}>
+                                  <circle cx={x} cy={y} r="5" className={ball.type === '6' ? 'fill-yellow-400 animate-ping' : 'fill-red-500 animate-ping'} />
+                                  <circle cx={x} cy={y} r="3" className={ball.type === '6' ? 'fill-yellow-405' : 'fill-red-500'} />
+                                </g>
+                              );
+                            });
+                          })()}
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="p-3 rounded-xl border border-slate-900 bg-slate-950/60 text-slate-350 text-[10px] font-semibold leading-relaxed flex gap-2.5 items-center">
+                        <span className="text-xl">⚠️</span>
+                        <div>
+                          <p className="font-bold text-white uppercase tracking-wider">stadium acoustics pressure</p>
+                          <p className="text-slate-400">Chepauk decibel levels at <span className="text-orange-400 font-extrabold">118dB</span>! Cheering intensity peaks during boundaries.</p>
+                        </div>
+                      </div>
+
+                      {/* Live Tension circle marker */}
+                      <div className="p-3 rounded-xl border border-slate-900 bg-slate-950/60 text-slate-350 text-[10px] font-semibold leading-relaxed flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-white uppercase tracking-wider">match tension factor</p>
+                          <p className="text-slate-400">{superOverActive ? "💥 Extreme Overtime State" : "⚡ High Leverage Death Overs"}</p>
+                        </div>
+                        <div className="h-10 w-10 rounded-full border-2 border-red-500/20 flex items-center justify-center font-mono font-black text-rose-500 shadow-lg text-[9px] relative shrink-0">
+                          <span className="absolute inset-0 rounded-full border-2 border-red-500 border-t-transparent animate-spin" />
+                          {superOverActive ? "95%" : "74%"}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -915,8 +1157,37 @@ export default function LiveMatchRoom({
                   </div>
                 </div>
 
+                {/* COMMENTARY HIGHLIGHT FILTER BUTTONS */}
+                <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-950/80 border border-slate-900 justify-start select-none items-center">
+                  <span className="text-[9px] font-mono font-black uppercase text-slate-500 mr-2">Highlight Filters:</span>
+                  {([
+                    { id: 'all', label: 'All deliveries', icon: '🏏' },
+                    { id: 'boundary', label: 'Boundaries (4s/6s)', icon: '💥' },
+                    { id: 'wicket', label: 'Wickets (Out)', icon: '☝️' },
+                    { id: 'special', label: 'DRS & Extra alerts', icon: '🤖' }
+                  ] as const).map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => setCommentaryFilter(f.id)}
+                      className={`text-[9.5px] font-black uppercase tracking-wider py-1 px-3 rounded-lg border cursor-pointer transition ${
+                        commentaryFilter === f.id
+                          ? 'bg-yellow-405 border-yellow-500 text-slate-950'
+                          : 'bg-slate-900 border-slate-850 text-slate-400 hover:text-white hover:border-slate-800'
+                      }`}
+                    >
+                      <span className="mr-1">{f.icon}</span> {f.label}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="space-y-3.5 max-h-[450px] overflow-y-auto pr-1">
-                  {customCommentary.map((ball, idx) => {
+                  {((superOverActive ? SUPER_OVER_BALLS : customCommentary).filter(ball => {
+                    if (commentaryFilter === 'all') return true;
+                    if (commentaryFilter === 'boundary') return ball.type === '4' || ball.type === '6';
+                    if (commentaryFilter === 'wicket') return ball.type === 'W' || ball.isWicket;
+                    if (commentaryFilter === 'special') return ball.type === 'DRS' || ball.type === 'NB';
+                    return true;
+                  })).map((ball, idx) => {
                     const isSix = ball.type === '6';
                     const isWicket = ball.type === 'W';
                     const isFour = ball.type === '4';
@@ -1566,6 +1837,133 @@ export default function LiveMatchRoom({
         </div>
 
       </div>
+
+      {/* REAL-TIME DLS MODEL COMPUTATOR MODAL */}
+      {dlsShowModal && (
+        <div className="fixed inset-0 min-h-screen z-[1000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md transition-all duration-300 animate-fadeIn">
+          <div className="w-full max-w-lg rounded-3xl border border-slate-900 bg-gradient-to-b from-slate-950 to-[#0b081c] p-6 shadow-2xl relative overflow-hidden">
+            {/* Ambient neon backdrop */}
+            <div className="absolute top-0 right-0 h-32 w-32 bg-cyan-400/5 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 h-32 w-32 bg-yellow-405/5 rounded-full blur-3xl" />
+
+            <div className="flex justify-between items-center border-b border-slate-900 pb-4 mb-4">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-black tracking-widest text-cyan-400 uppercase font-mono block">🌧️ WEATHER PROTOCOL DLS CALCULATOR</span>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">Duckworth-Lewis-Stern target modeler</h3>
+              </div>
+              <button 
+                onClick={() => setDlsShowModal(false)}
+                className="rounded-lg border border-slate-800 bg-slate-900 p-1.5 text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Target Score Input */}
+              <div className="space-y-1.5 p-3.5 rounded-2xl bg-slate-900/40 border border-slate-900">
+                <div className="flex justify-between items-center text-[11px] font-semibold">
+                  <span className="text-slate-300 uppercase tracking-wider">Target score established (1st Innings)</span>
+                  <span className="font-mono text-yellow-400 font-bold">{dlsFirstInningsScore} Runs</span>
+                </div>
+                <input 
+                  type="range"
+                  min="100"
+                  max="280"
+                  value={dlsFirstInningsScore}
+                  onChange={(e) => setDlsFirstInningsScore(parseInt(e.target.value))}
+                  className="w-full accent-cyan-400 cursor-pointer"
+                />
+                <div className="flex justify-between text-[9px] text-slate-500 font-mono">
+                  <span>100 R</span>
+                  <span>280 R</span>
+                </div>
+              </div>
+
+              {/* Rain Shortened Overs Input */}
+              <div className="space-y-1.5 p-3.5 rounded-2xl bg-slate-900/40 border border-slate-900">
+                <div className="flex justify-between items-center text-[11px] font-semibold">
+                  <span className="text-slate-300 uppercase tracking-wider">Shortened overs in chase</span>
+                  <span className="font-mono text-green-405 font-bold">{dlsShortenedOvers} Overs (Max 20)</span>
+                </div>
+                <input 
+                  type="range"
+                  min="5"
+                  max="20"
+                  value={dlsShortenedOvers}
+                  onChange={(e) => setDlsShortenedOvers(parseInt(e.target.value))}
+                  className="w-full accent-cyan-400 cursor-pointer"
+                />
+                <div className="flex justify-between text-[9px] text-slate-500 font-mono">
+                  <span>5 Overs</span>
+                  <span>20 Overs</span>
+                </div>
+              </div>
+
+              {/* Wickets Lost in Chase */}
+              <div className="space-y-1.5 p-3.5 rounded-2xl bg-slate-900/40 border border-slate-900">
+                <div className="flex justify-between items-center text-[11px] font-semibold">
+                  <span className="text-slate-300 uppercase tracking-wider">Active wickets lost in chase</span>
+                  <span className="font-mono text-rose-500 font-bold">{dlsWicketsLost}/10 Wickets</span>
+                </div>
+                <input 
+                  type="range"
+                  min="0"
+                  max="9"
+                  value={dlsWicketsLost}
+                  onChange={(e) => setDlsWicketsLost(parseInt(e.target.value))}
+                  className="w-full accent-cyan-400 cursor-pointer"
+                />
+                <div className="flex justify-between text-[9px] text-slate-500 font-mono">
+                  <span>0 (No wickets)</span>
+                  <span>9 (Last wicket pair)</span>
+                </div>
+              </div>
+
+              {/* DYNAMIC CALCULATED RESULTS AREA */}
+              <div className="p-4 rounded-2xl bg-cyan-400/5 border border-cyan-400/25 text-center space-y-1 relative overflow-hidden">
+                <p className="text-[10px] font-black tracking-widest text-cyan-400 uppercase font-mono">DLS PAR TO WIN CHASE</p>
+                <div className="text-4xl font-extrabold text-white tracking-widest font-mono">
+                  {Math.ceil(
+                    dlsFirstInningsScore * 
+                    (Math.max(0.1, (dlsShortenedOvers / 20) * 0.96 - (dlsWicketsLost * 0.055)))
+                  )}
+                  <span className="text-xs font-semibold text-slate-500 ml-1.5">RUNS</span>
+                </div>
+                <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">
+                  Target Required rate: <strong className="text-cyan-300">
+                    {((Math.ceil(
+                      dlsFirstInningsScore * 
+                      (Math.max(0.1, (dlsShortenedOvers / 20) * 0.96 - (dlsWicketsLost * 0.055)))
+                    )) / dlsShortenedOvers).toFixed(2)}
+                  </strong> RPO
+                </p>
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDlsShowModal(false);
+                    onTriggerToast("📥 Scoreboard calibrated to DLS weather target!", "success");
+                    onAddPoints(15);
+                  }}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 py-3 text-xs font-black text-slate-950 uppercase tracking-wider hover:brightness-110 shadow-lg cursor-pointer transition"
+                >
+                  ⚡ Calibrate scoreboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDlsShowModal(false)}
+                  className="px-4 py-3 rounded-xl border border-slate-800 bg-slate-900 text-xs font-black text-slate-400 hover:text-white cursor-pointer uppercase tracking-wider transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -374,7 +374,9 @@ export default function App() {
             {activeTab === 'home' && (
               <HomeSection 
                 matches={matches} 
-                onNavigate={handleNavigate} 
+                onNavigate={handleNavigate}
+                onAddPoints={handleAddPoints}
+                onTriggerToast={triggerToast}
                 trendingTopics={[
                   { id: 'topic-1', category: '🦁 CSK Franchise', title: 'Will Dhoni continue his finish masterclass or take full coaching reins?', fansCount: 420, teamId: 'CSK' },
                   { id: 'topic-2', category: '👑 RCB Loyal', title: 'Can Travis Head handle KKR spin variations at Eden Gardens stadium?', fansCount: 280, teamId: 'SRH' },
@@ -390,7 +392,9 @@ export default function App() {
                 initialFilter={communityFilter}
                 onAddPost={handleAddPost} 
                 onAddComment={handleAddComment} 
-                onAddReaction={handleAddReaction} 
+                onAddReaction={handleAddReaction}
+                onAddPoints={handleAddPoints}
+                onTriggerToast={triggerToast}
               />
             )}
 
@@ -403,6 +407,7 @@ export default function App() {
                 onAddPoints={handleAddPoints}
                 onUnlockBadge={handleUnlockBadge}
                 onVotePrediction={handleVotePrediction}
+                onTriggerToast={triggerToast}
               />
             )}
 

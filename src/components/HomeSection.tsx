@@ -3,10 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Flame, Play, MessageSquare, ArrowRight, Zap, Target, Shield, Users, Sparkles, Heart, Check, Gamepad2, ChevronRight, UserPlus, HeartHandshake } from 'lucide-react';
 import { MatchStats, SportType, FriendMatch } from '../types';
 import { SUGGESTED_FRIENDS, IPL_POINTS_TABLE, TEAMS_LIST } from '../data';
+import StoryReelsLounge from './StoryReelsLounge';
 
 interface HomeSectionProps {
   matches: Record<SportType, MatchStats>;
   onNavigate: (tab: string, arg?: any) => void;
+  onAddPoints: (pts: number) => void;
+  onTriggerToast: (msg: string) => void;
   trendingTopics: Array<{
     id: string;
     category: string;
@@ -16,7 +19,7 @@ interface HomeSectionProps {
   }>;
 }
 
-export default function HomeSection({ matches, onNavigate, trendingTopics }: HomeSectionProps) {
+export default function HomeSection({ matches, onNavigate, onAddPoints, onTriggerToast, trendingTopics }: HomeSectionProps) {
   // Local state for friendships trigger
   const [friendsList, setFriendsList] = useState<FriendMatch[]>(SUGGESTED_FRIENDS);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -127,6 +130,9 @@ export default function HomeSection({ matches, onNavigate, trendingTopics }: Hom
           </motion.div>
         </div>
       </section>
+
+      {/* REELS & STORIES PLATFORM LOUNGE */}
+      <StoryReelsLounge onAddPoints={onAddPoints} onTriggerToast={onTriggerToast} />
 
       {/* 2. CHAT FEED & ACTIVE LIVE MATCH FLOATS */}
       <section className="space-y-4" id="live-ipl-matches-section">

@@ -377,6 +377,7 @@ export default function App() {
                 onNavigate={handleNavigate}
                 onAddPoints={handleAddPoints}
                 onTriggerToast={triggerToast}
+                userProfile={userProfile}
                 trendingTopics={[
                   { id: 'topic-1', category: '🦁 CSK Franchise', title: 'Will Dhoni continue his finish masterclass or take full coaching reins?', fansCount: 420, teamId: 'CSK' },
                   { id: 'topic-2', category: '👑 RCB Loyal', title: 'Can Travis Head handle KKR spin variations at Eden Gardens stadium?', fansCount: 280, teamId: 'SRH' },

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Flame, Play, MessageSquare, ArrowRight, Zap, Target, Shield, Users, Sparkles, Heart, Check, Gamepad2, ChevronRight, UserPlus, HeartHandshake } from 'lucide-react';
-import { MatchStats, SportType, FriendMatch } from '../types';
+import { Trophy, Flame, Play, MessageSquare, ArrowRight, Zap, Target, Shield, Users, Sparkles, Heart, Check, Gamepad2, ChevronRight, UserPlus, HeartHandshake, Eye, Star, Sparkle, RefreshCw } from 'lucide-react';
+import { MatchStats, SportType, FriendMatch, UserProfile } from '../types';
 import { SUGGESTED_FRIENDS, IPL_POINTS_TABLE, TEAMS_LIST } from '../data';
 import StoryReelsLounge from './StoryReelsLounge';
 
@@ -17,12 +17,53 @@ interface HomeSectionProps {
     fansCount: number;
     teamId: string;
   }>;
+  userProfile: UserProfile;
 }
 
-export default function HomeSection({ matches, onNavigate, onAddPoints, onTriggerToast, trendingTopics }: HomeSectionProps) {
+export default function HomeSection({ matches, onNavigate, onAddPoints, onTriggerToast, trendingTopics, userProfile }: HomeSectionProps) {
   // Local state for friendships trigger
   const [friendsList, setFriendsList] = useState<FriendMatch[]>(SUGGESTED_FRIENDS);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // Home Page Personalized State
+  const [overrideTeam, setOverrideTeam] = useState<string>(userProfile.favoriteTeam || 'CSK');
+  const [overridePlayer, setOverridePlayer] = useState<string>(userProfile.favoritePlayer || 'MS Dhoni');
+  const [personalization, setPersonalization] = useState<{
+    welcomeHeading: string;
+    specialAnalysis: string;
+    favoriteTeamStats: string;
+    recommendedVibe: string;
+    customQuote: string;
+  } | null>(null);
+  const [isPersonalizing, setIsPersonalizing] = useState<boolean>(false);
+
+  // Call the server personalization endpoint
+  const loadPersonalization = async (team: string, player: string) => {
+    setIsPersonalizing(true);
+    try {
+      const response = await fetch('/api/personalize-home', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          favoriteTeam: team,
+          favoritePlayer: player,
+          cricketPersonality: userProfile.cricketPersonality || 'Strategic 🧠'
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPersonalization(data);
+      }
+    } catch (err) {
+      console.warn("Personalization lookup error:", err);
+    } finally {
+      setIsPersonalizing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPersonalization(overrideTeam, overridePlayer);
+  }, [overrideTeam, overridePlayer, userProfile.cricketPersonality]);
 
   const handleSendFriendRequest = (id: string, name: string) => {
     setFriendsList(prev => prev.map(f => {
@@ -128,6 +169,184 @@ export default function HomeSection({ matches, onNavigate, onAddPoints, onTrigge
               Live Fan Zone Arena
             </button>
           </motion.div>
+        </div>
+      </section>
+
+      {/* 1B. AI PERSONALIZATION COMMAND HUB */}
+      <section className="rounded-3xl border border-slate-800 bg-slate-900/10 p-6 md:p-8 relative overflow-hidden backdrop-blur-md shadow-xl" id="ai-personalization-dashboard">
+        {/* Neon Team Branding Glow Effects */}
+        <div className={`absolute top-0 right-0 h-40 w-40 rounded-full blur-3xl opacity-20 pointer-events-none transition-all duration-1000 ${
+          overrideTeam === 'CSK' ? 'bg-yellow-400' :
+          overrideTeam === 'RCB' ? 'bg-red-500' :
+          overrideTeam === 'MI' ? 'bg-blue-600' :
+          overrideTeam === 'KKR' ? 'bg-purple-600' :
+          overrideTeam === 'SRH' ? 'bg-orange-600' : 'bg-teal-500'
+        }`} />
+
+        <div className="relative mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-850 pb-5">
+          <div className="space-y-1.5Col">
+            <span className="text-[10px] sm:text-xs font-black tracking-widest text-[#facc15] uppercase bg-yellow-500/10 px-3.5 py-1 rounded-full border border-yellow-500/20 inline-flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 animate-spin text-yellow-400" />
+              AI HYPER-PERSONALIZED MATCH ENGINE
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight pt-1.5">
+              Your Unique IPL Hub Vibe
+            </h2>
+            <p className="text-xs text-slate-400">
+              Your favorite franchise, key player feeds, and cricket personality analysis synchronized in real-time.
+            </p>
+          </div>
+
+          {/* Quick Team Shifter buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-mono font-bold text-slate-500 mr-1 uppercase">Switch Vibe:</span>
+            {['CSK', 'MI', 'RCB', 'KKR', 'SRH', 'GT'].map((teamCode) => {
+              const teamInfo = getTeamLogoAndColor(teamCode);
+              return (
+                <button
+                  key={teamCode}
+                  onClick={() => {
+                    setOverrideTeam(teamCode);
+                    onAddPoints(2);
+                    onTriggerToast(`⚡ Switched homepage simulation to ${teamCode} franchise focus!`);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black tracking-tight border transition cursor-pointer ${
+                    overrideTeam === teamCode
+                      ? 'bg-gradient-to-tr from-slate-900 to-slate-950 border-yellow-500/40 text-yellow-400 shadow-lg'
+                      : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                  }`}
+                >
+                  <span className="text-xs">{teamInfo.icon}</span>
+                  {teamCode}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Dynamic Display of personalized layouts */}
+        <div className="grid gap-6 md:grid-cols-12 items-stretch">
+          
+          {/* LEFT COLUMN: Custom Franchise Jersey & Slogan banner */}
+          <div className="md:col-span-4 rounded-2xl bg-slate-950/60 border border-slate-850 p-5 flex flex-col justify-between space-y-4 relative overflow-hidden group">
+            {/* Visual background logo watermark */}
+            <div className="absolute -bottom-6 -right-6 text-7xl opacity-15 select-none transition group-hover:scale-110 duration-500">
+              {getTeamLogoAndColor(overrideTeam).icon}
+            </div>
+
+            <div className="space-y-3.5">
+              <span className="text-[9px] font-mono font-black text-fuchsia-400 uppercase tracking-widest">
+                🏆 CHAMPIONS CREED
+              </span>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-xl shadow-inner">
+                  {getTeamLogoAndColor(overrideTeam).icon}
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                    {getTeamLogoAndColor(overrideTeam).name}
+                  </h3>
+                  <p className="text-[10px] text-slate-500 font-bold">ACTIVE WATCHER AREA</p>
+                </div>
+              </div>
+
+              {/* Input for Player customizing focus */}
+              <div className="pt-2">
+                <label className="text-[9px] font-mono text-slate-400 font-bold uppercase tracking-wider block mb-1.5">
+                  Focus Star Player:
+                </label>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={overridePlayer}
+                    onChange={(e) => setOverridePlayer(e.target.value)}
+                    placeholder="Enter Player (e.g. Virat Kohli)"
+                    className="flex-grow rounded-lg bg-slate-900 border border-slate-800 px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-yellow-500/40 font-semibold"
+                  />
+                  <button
+                    onClick={() => {
+                      loadPersonalization(overrideTeam, overridePlayer);
+                      onAddPoints(3);
+                      onTriggerToast(`✨ AI matches updated to track ${overridePlayer}!`);
+                    }}
+                    className="rounded-lg bg-yellow-500 hover:brightness-110 px-2.5 flex items-center justify-center text-slate-950 cursor-pointer"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isPersonalizing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-900">
+              <p className="text-xs uppercase font-mono font-extrabold text-white tracking-widest text-[#10b981]">
+                "{personalization?.customQuote || 'Whistle Podu!'}"
+              </p>
+              <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">Dynamic Franchise Slogan</p>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: AI Live Personalization Pointers & Analytical Oracle response */}
+          <div className={`md:col-span-8 rounded-2xl p-5 border flex flex-col justify-between space-y-4 transition ${
+            overrideTeam === 'CSK' ? 'bg-[#facc15]/3 border-yellow-500/10' :
+            overrideTeam === 'RCB' ? 'bg-[#f43f5e]/3 border-rose-500/10' :
+            overrideTeam === 'MI' ? 'bg-[#2563eb]/3 border-blue-500/10' :
+            overrideTeam === 'KKR' ? 'bg-[#9333ea]/3 border-purple-500/10' :
+            overrideTeam === 'SRH' ? 'bg-[#ea580c]/3 border-orange-500/10' : 'bg-[#0f766e]/3 border-teal-500/10'
+          }`}>
+            <div className="space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <span className="text-[9px] font-mono tracking-widest text-yellow-500 font-extrabold uppercase">
+                    🔮 AI PERSONALIZED STRATEGY BRIEF
+                  </span>
+                  <h4 className="text-md font-black text-white">
+                    {isPersonalizing ? (
+                      <span className="flex items-center gap-2 text-slate-400">
+                        <RefreshCw className="h-4 w-4 animate-spin text-yellow-400" /> Connecting to AI Ground Stadiums...
+                      </span>
+                    ) : (
+                      personalization?.welcomeHeading || `Welcome back to the Crew!`
+                    )}
+                  </h4>
+                </div>
+                <div className="rounded-lg bg-black px-3 py-1 text-[10px] font-mono font-bold text-slate-400 border border-slate-850 flex items-center gap-1 shrink-0">
+                  <Eye className="h-3.5 w-3.5 text-cyan-400" />
+                  Fans: {Math.floor(Math.random() * 5 + 4)} active matching you
+                </div>
+              </div>
+
+              {/* Special Analysis text body */}
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-900">
+                {isPersonalizing ? (
+                  <div className="space-y-2.5 animate-pulse">
+                    <div className="h-3.5 bg-slate-850 rounded w-5/6" />
+                    <div className="h-3.5 bg-slate-850 rounded w-full" />
+                    <div className="h-3.5 bg-slate-850 rounded w-3/4" />
+                  </div>
+                ) : (
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-semibold">
+                    {personalization?.specialAnalysis}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 pt-4 border-t border-slate-900/60 text-xs">
+              <div>
+                <span className="text-[10px] text-slate-500 font-bold uppercase block">Personalized Playoff Standing Outlook</span>
+                <p className="font-extrabold text-[#facc15] mt-1 font-mono">
+                  {personalization?.favoriteTeamStats || `${overrideTeam} playoffs probability looks high with a tough opponent upcoming.`}
+                </p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-500 font-bold uppercase block">Synchronized Acoustics Theme</span>
+                <p className="font-bold text-slate-350 mt-1 flex items-center gap-1 bg-slate-950 border border-slate-900 px-2.5 py-1 rounded-lg w-fit">
+                  🎵 {personalization?.recommendedVibe || 'Ambient Horns & Stadium Vuvuzelas'}
+                </p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 

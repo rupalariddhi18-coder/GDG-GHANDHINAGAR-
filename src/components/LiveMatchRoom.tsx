@@ -133,12 +133,111 @@ export default function LiveMatchRoom({
   const [hypeSpeedMode, setHypeSpeedMode] = useState<boolean>(false);
   const [voiceCommentaryEnabled, setVoiceCommentaryEnabled] = useState<boolean>(false);
   const [stadiumAmbientType, setStadiumAmbientType] = useState<string | null>(null);
+  
+  // Custom AI Experiencing states
+  const [aiCommentatorLine, setAiCommentatorLine] = useState<string>('⚡ AI Commentator: Welcome to the supreme playoffs final stage! Every ball is a tactical heartbeat.');
+  const [aiCommentatorPersona, setAiCommentatorPersona] = useState<'shastri' | 'harsha' | 'sidhu'>('shastri');
+  const [aiCommentatorLoading, setAiCommentatorLoading] = useState<boolean>(false);
+  const [aiCrowdData, setAiCrowdData] = useState<{
+    teamAExcitement: number;
+    teamBExcitement: number;
+    overallExcitement: number;
+    pressureLevel: number;
+    emotionAlert: string;
+    cskEmotion: string;
+    miEmotion: string;
+  } | null>({
+    teamAExcitement: 50,
+    teamBExcitement: 50,
+    overallExcitement: 50,
+    pressureLevel: 65,
+    emotionAlert: "Stadium stands are fully synchronized in acoustic anticipation!",
+    cskEmotion: "Chanting Dhoni's Name 🦁",
+    miEmotion: "Strategizing Fielding Lanes 🌀"
+  });
+  const [aiMemeData, setAiMemeData] = useState<{
+    moment: string;
+    caption: string;
+    punchline: string;
+    imageUrl: string;
+    templateName: string;
+  } | null>({
+    moment: "General Live",
+    caption: "BOWLER REALIZES THE BATSMAN HAS HIGHER GRAPHIC DESIGN RESOLUTION",
+    punchline: "MS Dhoni walks into the crease, the stadium boundaries physically expand! Aura level maximum! 🦁🚁",
+    imageUrl: "🚁",
+    templateName: "Dhoni Sledgehammer Helix"
+  });
+
   const [customMemeText, setCustomMemeText] = useState<{
     moment: string;
     caption: string;
     punchline: string;
     imageUrl: string;
   } | null>(null);
+
+  // Core API query syncing live events to commentator, emotions, and memes
+  const fetchAIEventInsight = async (ball: SimulatedBall, customPersona?: 'shastri' | 'harsha' | 'sidhu') => {
+    setAiCommentatorLoading(true);
+    const personaToUse = customPersona || aiCommentatorPersona;
+    try {
+      // 1. Commentator Endpoint
+      const response = await fetch('/api/commentator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentBall: ball, activeSport, persona: personaToUse })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAiCommentatorLine(data.text);
+
+        // TTS read out loud if voice is configured and enabled
+        if (voiceCommentaryEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
+          try {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(data.text.replace(/⚡|🎙️|🔥/g, ''));
+            if (personaToUse === 'shastri') {
+              utterance.pitch = 0.90;
+              utterance.rate = 1.05;
+            } else if (personaToUse === 'harsha') {
+              utterance.pitch = 1.15;
+              utterance.rate = 1.0;
+            } else {
+              utterance.pitch = 1.25;
+              utterance.rate = 1.15;
+            }
+            window.speechSynthesis.speak(utterance);
+          } catch(e) {}
+        }
+      }
+
+      // 2. Crowd Emotion Telemetry Endpoint
+      const emotionRes = await fetch('/api/crowd-emotion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentBall: ball, activeSport, chatMessages: chatMessages.slice(-5) })
+      });
+      if (emotionRes.ok) {
+        const emoData = await emotionRes.json();
+        setAiCrowdData(emoData);
+      }
+
+      // 3. Automated Cricket meme Endpoint
+      const memeRes = await fetch('/api/auto-meme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentBall: ball, activeSport })
+      });
+      if (memeRes.ok) {
+        const mData = await memeRes.json();
+        setAiMemeData(mData);
+      }
+    } catch (e) {
+      console.warn("AI Insights query failed:", e);
+    } finally {
+      setAiCommentatorLoading(false);
+    }
+  };
 
   const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([]);
   const emojiIdCounter = useRef(0);
@@ -354,6 +453,9 @@ export default function LiveMatchRoom({
     setTickerOver(queue[0].over);
     setCustomCommentary([queue[0]]);
     setScreenEffect('normal');
+    
+    // Initial fetch of AI stadium intelligence of the first ball
+    fetchAIEventInsight(queue[0]);
   }, [activeSport]);
 
   // Handle core simulation increments
@@ -374,32 +476,29 @@ export default function LiveMatchRoom({
           // Append to dynamic commentary ticker feed (with caps to prevent memory issues)
           setCustomCommentary(old => [currentBall, ...old].slice(0, 45));
 
-          // Voice Commentary Speech Synthesis Trigger
-          if (voiceCommentaryEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
-            try {
-              window.speechSynthesis.cancel(); // Stop backlog
-              const cleanSpeech = `${currentBall.over} overs, ${currentBall.desc.replace(/[#*]/g, '')}`;
-              const utterance = new SpeechSynthesisUtterance(cleanSpeech);
-              utterance.pitch = 1.15;
-              utterance.rate = 1.05;
-              window.speechSynthesis.speak(utterance);
-            } catch (err) {
-              console.warn("Speech Synthesis failed or blocked in preview panel:", err);
-            }
-          }
+          // Real-time AI Event Insight Endpoint call - updates commentator, crowd emotion and meme
+          fetchAIEventInsight(currentBall);
 
-          // Trigger special screen effects
+          // Trigger special screen effects (The Hype Engine Alert System)
           if (currentBall.type === '6') {
             setScreenEffect('six');
-            setTimeout(() => setScreenEffect('normal'), 3000);
+            setTimeout(() => setScreenEffect('normal'), 4000);
             onAddPoints(8);
           } else if (currentBall.type === 'W') {
             setScreenEffect('wicket');
-            setTimeout(() => setScreenEffect('normal'), 3000);
+            setTimeout(() => setScreenEffect('normal'), 4000);
             onAddPoints(12);
             if (navigator.vibrate) {
-              navigator.vibrate([200, 100, 200]); // Vibrates if system supports
+              navigator.vibrate([250, 100, 250]); // Dual pulse
             }
+          } else if (currentBall.type === 'DRS') {
+            setScreenEffect('drs_alert');
+            setTimeout(() => setScreenEffect('normal'), 4000);
+            onAddPoints(5);
+          } else if (currentBall.type === 'NB' || parseFloat(currentBall.over) >= 20.4) {
+            setScreenEffect('climax_pressure');
+            setTimeout(() => setScreenEffect('normal'), 4500);
+            onAddPoints(10);
           } else {
             setScreenEffect('normal');
           }
@@ -411,6 +510,8 @@ export default function LiveMatchRoom({
             setCurrentSentimentMood('Nervous 😰');
           } else if (currentBall.type === 'DRS') {
             setCurrentSentimentMood('Nervous 😰');
+          } else if (currentBall.type === 'NB') {
+            setCurrentSentimentMood('Angry 😡');
           }
 
           return hypeSpeedMode ? 1 : 5; // Reset interval to 1 or 5 seconds countdown
@@ -421,7 +522,7 @@ export default function LiveMatchRoom({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentBallIdx, activeSport, hypeSpeedMode, voiceCommentaryEnabled]);
+  }, [currentBallIdx, activeSport, hypeSpeedMode, voiceCommentaryEnabled, aiCommentatorPersona]);
 
   // Passive simulated chat integration
   useEffect(() => {
@@ -600,6 +701,8 @@ export default function LiveMatchRoom({
     <div className={`space-y-6 relative rounded-3xl p-1 transition-all duration-300 ${
       screenEffect === 'six' ? 'shadow-[0_0_50px_rgba(234,179,8,0.4)] border-yellow-500/60 ring-2 ring-yellow-500/20' : 
       screenEffect === 'wicket' ? 'shadow-[0_0_50px_rgba(244,63,94,0.4)] border-rose-500/60 ring-2 ring-rose-500/20 animate-shake' : 
+      screenEffect === 'drs_alert' ? 'shadow-[0_0_50px_rgba(6,182,212,0.4)] border-cyan-550/60 ring-2 ring-cyan-500/20' : 
+      screenEffect === 'climax_pressure' ? 'shadow-[0_0_50px_rgba(249,115,22,0.4)] border-orange-500/60 ring-2 ring-orange-500/20 animate-pulse' : 
       'border-transparent'
     }`} id="stadium-live-room-container">
 
@@ -664,6 +767,36 @@ export default function LiveMatchRoom({
               <span className="text-7xl font-sans font-black block text-rose-500 tracking-tighter leading-none animate-bounce">☝️ WICKET! ☝️</span>
               <span className="text-xs font-mono font-black text-[#f43f5e] uppercase tracking-widest mt-2 block">STADIUM SENSOR VIBRATION</span>
               <span className="text-[10px] text-slate-400 block mt-1">Major turning point detected. Opponents celebrate! +12 Points.</span>
+            </div>
+          </motion.div>
+        )}
+
+        {screenEffect === 'drs_alert' && (
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 1.2, opacity: 0 }}
+            className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center bg-cyan-500/10 backdrop-blur-[1px]"
+          >
+            <div className="text-center bg-slate-950/95 border-2 border-cyan-400 px-10 py-6 rounded-3xl shadow-2xl">
+              <span className="text-4xl font-sans font-black block text-cyan-400 tracking-tighter leading-none animate-pulse">🧐 DRS DECISION ACTIVE 🧐</span>
+              <span className="text-xs font-mono font-black text-[#06b6d4] uppercase tracking-widest mt-2.5 block">AI COHERENT REVIEW SCANNER</span>
+              <span className="text-[10px] text-slate-400 block mt-1">Ultra-edge tracking is calibrating stadium acoustics frame-by-frame. Just wait... +5 Points.</span>
+            </div>
+          </motion.div>
+        )}
+
+        {screenEffect === 'climax_pressure' && (
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 1.2, opacity: 0 }}
+            className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center bg-orange-600/15 backdrop-blur-[1.5px]"
+          >
+            <div className={`text-center bg-slate-950/95 border-2 border-orange-500 px-10 py-6 rounded-3xl shadow-2xl animate-spin-pulse`}>
+              <span className="text-4xl font-sans font-black block text-orange-500 tracking-tighter leading-none animate-pulse">💥 CLIMAX PRESSURE MAX 💥</span>
+              <span className="text-xs font-mono font-black text-orange-400 uppercase tracking-widest mt-2.5 block">STADIUM DECIBELS CRITICAL</span>
+              <span className="text-[10px] text-slate-400 block mt-1">Playoff crunch moment detected! Crowd roar metrics passing 120 decibels. +10 Points!</span>
             </div>
           </motion.div>
         )}
@@ -1013,6 +1146,243 @@ export default function LiveMatchRoom({
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* AI STADIUM CRICKET EXPERIENCE HUB */}
+                <div className="rounded-2xl border border-yellow-500/10 bg-gradient-to-br from-slate-950 via-[#0a0521] to-[#12052b] p-5 md:p-6 space-y-6 shadow-2xl relative overflow-hidden" id="ai-stadium-experience-hub">
+                  {/* Visual background lights */}
+                  <div className="absolute top-0 left-12 w-64 h-64 bg-fuchsia-600/5 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute bottom-0 right-12 w-64 h-64 bg-cyan-600/5 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-900 pb-4 gap-3 relative">
+                    <div>
+                      <span className="text-[10px] font-mono font-black text-yellow-405 tracking-widest uppercase bg-yellow-500/10 border border-yellow-500/20 px-3 py-1 rounded-full">
+                        ⚡ ULTIMATE AI FAN ENGINE ACTIVE
+                      </span>
+                      <h3 className="text-md sm:text-lg font-black text-white tracking-tight pt-2">
+                        Virtual Stadium AI Oracle & Commentary Booth
+                      </h3>
+                    </div>
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-900 border border-slate-850 px-2.5 py-1 rounded-lg">
+                      DECIBELS: <span className="text-yellow-400 font-mono font-black">118dB</span>
+                    </span>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-12 items-start">
+                    
+                    {/* COLUMN 1: AI COMMENTATOR VOICE PORTAL (7 Columns) */}
+                    <div className="md:col-span-7 bg-slate-950/80 border border-slate-900/60 rounded-xl p-4.5 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500" />
+                          </span>
+                          <span className="text-xs font-black uppercase text-white tracking-wider">Configure Commentator Persona</span>
+                        </div>
+                        
+                        {/* Selector Controls */}
+                        <div className="flex gap-1 bg-black p-0.5 rounded-lg border border-slate-900">
+                          {(['shastri', 'harsha', 'sidhu'] as const).map((pers) => (
+                            <button
+                              key={pers}
+                              onClick={() => {
+                                setAiCommentatorPersona(pers);
+                                const queue = MATCH_BALLS_SIMULATION[activeSport] || MATCH_BALLS_SIMULATION.csk_mi;
+                                fetchAIEventInsight(queue[currentBallIdx], pers);
+                                onTriggerToast ? onTriggerToast(`🎙️ Switch to ${pers === 'shastri' ? 'Ravi Shastri Tracer' : pers === 'harsha' ? 'Harsha Poetic' : 'Navjot Shayari'} commentator!`, 'info') : onAddPoints(1);
+                              }}
+                              className={`px-2.5 py-1 text-[10px] font-black rounded capitalize transition cursor-pointer ${
+                                aiCommentatorPersona === pers
+                                  ? 'bg-yellow-400 text-slate-950 font-black shadow'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              {pers === 'shastri' ? '⚡ शास्त्री' : pers === 'harsha' ? '📜 हर्ष' : '🔥 सिद्धू'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Display commentary box */}
+                      <div className="relative rounded-xl bg-slate-900/50 p-4 border border-slate-850/80 min-h-[90px] flex flex-col justify-between group">
+                        {aiCommentatorLoading ? (
+                          <div className="space-y-2 animate-pulse">
+                            <div className="h-3.5 bg-slate-800 rounded w-11/12" />
+                            <div className="h-3.5 bg-slate-800 rounded w-3/4" />
+                          </div>
+                        ) : (
+                          <p className="text-xs sm:text-sm font-semibold text-slate-200 italic leading-relaxed">
+                            {aiCommentatorLine || "Awaiting commentary stream..."}
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-900 mt-2 text-[10px]">
+                          <span className="text-slate-500 font-bold uppercase font-mono">
+                            🎙️ {aiCommentatorPersona === 'shastri' ? 'RAVI SHASTRI STYLE' : aiCommentatorPersona === 'harsha' ? 'HARSHA BHOGLE CAPABILITY' : 'SIDHU SHAYAR INDEX'}
+                          </span>
+                          
+                          {/* TTS Trigger Actions */}
+                          <button
+                            onClick={() => {
+                              if (typeof window !== 'undefined' && window.speechSynthesis) {
+                                window.speechSynthesis.cancel();
+                                const u = new SpeechSynthesisUtterance(aiCommentatorLine.replace(/⚡|🎙️|🔥|⚡/g, ''));
+                                if (aiCommentatorPersona === 'shastri') { u.pitch = 0.90; u.rate = 1.05; }
+                                else if (aiCommentatorPersona === 'harsha') { u.pitch = 1.15; u.rate = 1.0; }
+                                else { u.pitch = 1.25; u.rate = 1.15; }
+                                window.speechSynthesis.speak(u);
+                                onTriggerToast ? onTriggerToast("🎙️ Play AI Speech Synthesis!", "success") : null;
+                              }
+                            }}
+                            disabled={aiCommentatorLoading}
+                            className="bg-yellow-500/10 hover:bg-yellow-500 hover:text-slate-950 border border-yellow-500/20 px-2.5 py-1 rounded text-[10px] font-black tracking-tight text-yellow-400 transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>📣 Speak Aloud</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                        <span className="inline-block h-1.5 w-1.5 bg-green-500 rounded-full" />
+                        <span>Voice generation uses real-time server-side Gemini 3.5 LLMs. Toggle audio in settings.</span>
+                      </div>
+                    </div>
+
+                    {/* COLUMN 2: CROWD SENTIMENT & FAN ENERGY METRICS (5 Columns) */}
+                    <div className="md:col-span-5 bg-slate-950/80 border border-slate-900/60 rounded-xl p-4.5 space-y-4">
+                      <div>
+                        <span className="text-[9px] font-mono font-black text-rose-450 uppercase tracking-widest">
+                          📊 LIVE TELEMETRY LOGS
+                        </span>
+                        <h4 className="text-xs font-black text-white tracking-wide uppercase pt-1 inline-flex items-center gap-1">
+                          Live Fan Sentiment Spectrum
+                        </h4>
+                      </div>
+
+                      {/* Crowds sliders */}
+                      <div className="space-y-3 pt-1 text-[11px]">
+                        
+                        {/* Team A Excitement */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between font-bold">
+                            <span className="text-yellow-405">CSK Fans Excitement</span>
+                            <span className="font-mono text-yellow-400">{aiCrowdData?.teamAExcitement || 60}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-yellow-400 transition-all duration-500" 
+                              style={{ width: `${aiCrowdData?.teamAExcitement || 60}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-slate-500 block uppercase font-medium">CSK Mood: {aiCrowdData?.cskEmotion || 'Chanting'}</span>
+                        </div>
+
+                        {/* Team B Excitement */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between font-bold">
+                            <span className="text-blue-400">MI Fans Excitement</span>
+                            <span className="font-mono text-blue-400">{aiCrowdData?.teamBExcitement || 40}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-blue-500 transition-all duration-500" 
+                              style={{ width: `${aiCrowdData?.teamBExcitement || 40}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-slate-500 block uppercase font-medium">MI Mood: {aiCrowdData?.miEmotion || 'Stress watch'}</span>
+                        </div>
+                      </div>
+
+                      {/* Dynamic Stadium Noise Waveform visualizer */}
+                      <div className="pt-2">
+                        <span className="text-[9px] text-slate-500 font-bold uppercase block mb-1.5">虚拟体育场声压 (Acoustic Amplitude)</span>
+                        <div className="flex items-end justify-center gap-1.5 h-12 bg-black/60 rounded-xl p-2.5 border border-slate-900 overflow-hidden">
+                          {[25, 45, 80, 55, 90, 60, 40, 75, 95, 50, 85, 30, 70, 40, 60].map((h, index) => (
+                            <div
+                              key={index}
+                              className={`w-1 rounded-full transition-all duration-500 ${
+                                screenEffect === 'six' ? 'bg-yellow-400' :
+                                screenEffect === 'wicket' ? 'bg-rose-500' :
+                                screenEffect === 'drs_alert' ? 'bg-cyan-400' : 'bg-fuchsia-500'
+                              }`}
+                              style={{
+                                height: `${Math.max(10, Math.min(100, h + (Math.sin((currentBallIdx + index) * 0.7) * 20)))}%`
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-[9px] text-fuchsia-400 font-semibold italic text-center mt-1.5">{aiCrowdData?.emotionAlert || "Crowd chanting active!"}</p>
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  {/* ROW 3: AI DEFIANT COHERENT MEME COMPILER */}
+                  <div className="border-t border-slate-900/60 pt-4 space-y-3 relative">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xl">🎭</span>
+                        <div>
+                          <span className="text-[9px] font-mono tracking-widest text-[#10b981] font-extrabold block">AUTOMATED MATCH TROLL COMPILER</span>
+                          <h4 className="text-xs font-black text-white uppercase tracking-wider">AI Meme of the Moment</h4>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const queue = MATCH_BALLS_SIMULATION[activeSport] || MATCH_BALLS_SIMULATION.csk_mi;
+                          const currentBall = queue[currentBallIdx];
+                          // Force fetch meme again
+                          try {
+                            const res = await fetch('/api/auto-meme', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ currentBall, activeSport })
+                            });
+                            if (res.ok) {
+                              const mData = await res.json();
+                              setAiMemeData(mData);
+                              onTriggerToast ? onTriggerToast("🎭 Fresh match meme compiled!", "success") : onAddPoints(2);
+                            }
+                          } catch(err) {}
+                        }}
+                        className="text-[9px] bg-slate-900 hover:bg-slate-850 hover:text-white text-slate-400 border border-slate-850 px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1 transition font-bold cursor-pointer"
+                      >
+                        🔄 Regenerate Duel Meme
+                      </button>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-4 items-stretch">
+                      
+                      {/* Left logo meme label */}
+                      <div className="sm:col-span-1 rounded-xl bg-slate-950 border border-slate-900 p-3.5 flex flex-col justify-center items-center text-center space-y-1">
+                        <span className="text-4xl animate-bounce">{aiMemeData?.imageUrl || "🚁"}</span>
+                        <h5 className="text-[10px] sm:text-xs font-black text-white tracking-widest uppercase truncate max-w-full">
+                          {aiMemeData?.templateName || "Thala's Heli Classic"}
+                        </h5>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase">Meme ID Index</p>
+                      </div>
+
+                      {/* Right setups and caption */}
+                      <div className="sm:col-span-3 rounded-xl bg-slate-900/40 p-4 border border-slate-900 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <p className="text-[9px] text-slate-500 font-mono font-extrabold uppercase">CAPTION SETUP:</p>
+                          <p className="text-xs font-extrabold text-[#f59e0b] filter drop-shadow">
+                            " {aiMemeData?.caption} "
+                          </p>
+                        </div>
+                        <div className="pt-2 border-t border-slate-950/60 mt-3">
+                          <p className="text-[9px] text-slate-500 font-mono font-extrabold uppercase">THE PUNCHLINE / TROLL RESPONSE:</p>
+                          <p className="text-xs text-slate-300 font-semibold leading-relaxed">
+                            {aiMemeData?.punchline}
+                          </p>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
                 </div>
 
                 {/* CURRENT PARTNERSHIP ANALYSIS FRAME */}

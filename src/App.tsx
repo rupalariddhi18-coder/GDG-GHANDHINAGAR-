@@ -274,13 +274,13 @@ export default function App() {
             id="brand-logo"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-yellow-405 to-orange-500 shadow-md shadow-orange-550/10">
-              <span className="text-sm font-black text-slate-950">IC</span>
+              <span className="text-sm font-black text-slate-950">IV</span>
             </div>
             <div>
               <span className="text-md sm:text-lg font-black tracking-tight text-white">
-                IPL<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 font-black animate-pulse"> Connect</span>
+                IPL<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 font-black animate-pulse">Verse</span>
               </span>
-              <span className="text-[8px] font-bold block text-slate-500 tracking-wider">IPL REAL-TIME FAN CONVERSION</span>
+              <span className="text-[8px] font-bold block text-slate-500 tracking-wider">IPL FUTURISTIC FAN UNIVERSE</span>
             </div>
           </div>
 
@@ -465,8 +465,8 @@ export default function App() {
 
       {/* Clean Bottom spacing footer for desktop views */}
       <footer className="hidden md:block py-16 border-t border-slate-900 bg-slate-950/20 text-center text-[10px] text-slate-600 font-bold tracking-widest gap-2">
-        <p>© 2026 IPL CONNECT REAL-TIME SPORTS INTEGRATED LOYALTY PLATFORM. ALL RIGHTS RESERVED.</p>
-        <p className="mt-1 text-yellow-500/40">POWERED BY GEMINI COGNITIVE INTELLECT • CRICKET REAL-TIME PORTAL</p>
+        <p>© 2026 IPLVERSE REAL-TIME SPORTS INTEGRATED FAN UNIVERSE. ALL RIGHTS RESERVED.</p>
+        <p className="mt-1 text-yellow-500/40">POWERED BY GEMINI COGNITIVE INTELLECT • CRICKET IMMERSIVE VIRTUAL STADIUM</p>
       </footer>
 
     </div>

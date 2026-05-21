@@ -33,7 +33,7 @@ export const INITIAL_BADGES: Badge[] = [
     id: 'badge-3',
     name: 'Cricket Brainiac',
     icon: '🧠',
-    description: 'Calculated target scenarios using the IPL Connect AI Strategy Generator.',
+    description: 'Calculated target scenarios using the IPLVerse AI Strategy Generator.',
     color: 'border-cyan-500/30 text-cyan-400 bg-cyan-500/10'
   }
 ];

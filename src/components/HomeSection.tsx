@@ -90,7 +90,7 @@ export default function HomeSection({ matches, onNavigate, trendingTopics }: Hom
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-tight"
           >
-            Connect, Vibe & Cheer on <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-fuchsia-500 hover:brightness-110 transition duration-300">IPL Connect</span>
+            Connect, Vibe & Cheer on <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-fuchsia-500 hover:brightness-110 transition duration-300">IPLVerse</span>
           </motion.h1>
 
           <motion.p 

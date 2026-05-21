@@ -119,11 +119,169 @@ export default function LiveMatchRoom({
   } | null>(null);
   const [aiPredicting, setAiPredicting] = useState<boolean>(false);
   const [currentSentimentMood, setCurrentSentimentMood] = useState<'Excited 🤩' | 'Nervous 😰' | 'Angry 😡' | 'Celebrating 🥳'>('Excited 🤩');
+  const [hypeSpeedMode, setHypeSpeedMode] = useState<boolean>(false);
+  const [voiceCommentaryEnabled, setVoiceCommentaryEnabled] = useState<boolean>(false);
+  const [stadiumAmbientType, setStadiumAmbientType] = useState<string | null>(null);
+  const [customMemeText, setCustomMemeText] = useState<{
+    moment: string;
+    caption: string;
+    punchline: string;
+    imageUrl: string;
+  } | null>(null);
 
-  // Emojis
   const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([]);
   const emojiIdCounter = useRef(0);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  // STADIUM ACOUSTICS SYNTHESIZER
+  const playStadiumSynth = (type: 'horn' | 'cheer' | 'vuvuzela' | 'drum') => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      
+      if (type === 'horn') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(320, ctx.currentTime);
+        osc.frequency.setValueAtTime(385, ctx.currentTime + 0.15);
+        osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 1.2);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.2);
+      } else if (type === 'vuvuzela') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(233, ctx.currentTime);
+        osc.frequency.setValueAtTime(245, ctx.currentTime + 0.35);
+        osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 1.5);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.5);
+      } else if (type === 'cheer') {
+        const bufferSize = ctx.sampleRate * 2;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        type bqFilter = 'lowpass' | 'bandpass';
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(700, ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(450, ctx.currentTime + 1.8);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.07, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start();
+      } else if (type === 'drum') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(95, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.55);
+        gain.gain.setValueAtTime(0.24, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.55);
+      }
+      setStadiumAmbientType(type);
+      setTimeout(() => setStadiumAmbientType(null), 1000);
+    } catch (e) {
+      console.warn("Web Audio API not accessible or blocked by platform rules:", e);
+    }
+  };
+
+  // DYNAMIC LIVE SENTIMENT ANALYSIS MATCH EMOTION GAUGE
+  const getDynamicSentimentPercentages = () => {
+    let excited = 45;
+    let celebrating = 25;
+    let nervous = 15;
+    let shocked = 10;
+    let angry = 5;
+
+    const queue = MATCH_BALLS_SIMULATION[activeSport] || MATCH_BALLS_SIMULATION.csk_mi;
+    const currentBall = queue[currentBallIdx];
+
+    if (currentBall) {
+      if (currentBall.type === '6') {
+        excited = 55;
+        celebrating = 36;
+        nervous = 5;
+        shocked = 3;
+        angry = 1;
+      } else if (currentBall.type === 'W') {
+        excited = 11;
+        celebrating = 4;
+        nervous = 46;
+        shocked = 28;
+        angry = 11;
+      } else if (currentBall.type === '4') {
+        excited = 48;
+        celebrating = 32;
+        nervous = 12;
+        shocked = 6;
+        angry = 2;
+      } else if (currentBall.type === 'DRS') {
+        excited = 14;
+        celebrating = 4;
+        nervous = 52;
+        shocked = 24;
+        angry = 6;
+      }
+    }
+
+    return { excited, celebrating, nervous, shocked, angry };
+  };
+
+  // STADIUM REAL-TIME MEME GENERATOR LOGIC
+  const generateStadiumMeme = (momentId: string) => {
+    const memesPool: Record<string, { caption: string, punchline: string, image: string }> = {
+      dhoni_six: {
+        caption: "BUMRAH DELIVERS A SEETHING 148 KM/H BLOCKHOLE YORKER",
+        punchline: "Thala casually flies it 104 meters out of the stadium like it's a warm-up stroll! 🚲🔥 Aura +99999",
+        image: "🚁"
+      },
+      virat_catch: {
+        caption: "BATTER CHIPS A SEEMINGLY HOVERING BOUNDARY DEPICTING IMMENSE CONFIDENCE",
+        punchline: "King Kohli flies 4 meters horizontally defying gravity to pluck the ball. Cinema is alive! 🦁👑",
+        image: "🦅"
+      },
+      narine_storm: {
+        caption: "BOWLERS PLOTTING SUPERCOMPUTED SWING THEORIES TO STIFLE SUNIL NARINE",
+        punchline: "Narine takes zero backswing, maintains a completely blank face, and hits fifty off 16 balls! 😑🌪️",
+        image: "🌪️"
+      },
+      pant_reverse: {
+        caption: "BOWLER RELEASES A SPEED SHOCKER TARGETING PANT'S HEADSPACE",
+        punchline: "Pant falls horizontal on his back and reverse sweeps it to the stadium ceiling. Physics has resigned! 🤸💯",
+        image: "🤸"
+      }
+    };
+
+    const choice = memesPool[momentId] || memesPool.dhoni_six;
+    setCustomMemeText({
+      moment: momentId,
+      caption: choice.caption,
+      punchline: choice.punchline,
+      imageUrl: choice.image
+    });
+  };
 
   // ACTIVE MATCH REFERENCE
   const activeQueue = MATCH_BALLS_SIMULATION[activeSport] || MATCH_BALLS_SIMULATION.csk_mi;
@@ -133,7 +291,7 @@ export default function LiveMatchRoom({
   useEffect(() => {
     // Reset state on sport selection change
     setCurrentBallIdx(0);
-    setTimeToNextBall(5);
+    setTimeToNextBall(hypeSpeedMode ? 1 : 5);
     const queue = MATCH_BALLS_SIMULATION[activeSport] || MATCH_BALLS_SIMULATION.csk_mi;
     setTickerScore(queue[0].score);
     setTickerOver(queue[0].over);
@@ -158,6 +316,20 @@ export default function LiveMatchRoom({
 
           // Append to dynamic commentary ticker feed (with caps to prevent memory issues)
           setCustomCommentary(old => [currentBall, ...old].slice(0, 45));
+
+          // Voice Commentary Speech Synthesis Trigger
+          if (voiceCommentaryEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
+            try {
+              window.speechSynthesis.cancel(); // Stop backlog
+              const cleanSpeech = `${currentBall.over} overs, ${currentBall.desc.replace(/[#*]/g, '')}`;
+              const utterance = new SpeechSynthesisUtterance(cleanSpeech);
+              utterance.pitch = 1.15;
+              utterance.rate = 1.05;
+              window.speechSynthesis.speak(utterance);
+            } catch (err) {
+              console.warn("Speech Synthesis failed or blocked in preview panel:", err);
+            }
+          }
 
           // Trigger special screen effects
           if (currentBall.type === '6') {
@@ -184,7 +356,7 @@ export default function LiveMatchRoom({
             setCurrentSentimentMood('Nervous 😰');
           }
 
-          return 5; // Reset interval to 5 seconds countdown
+          return hypeSpeedMode ? 1 : 5; // Reset interval to 1 or 5 seconds countdown
         } else {
           return prev - 1;
         }
@@ -192,7 +364,7 @@ export default function LiveMatchRoom({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentBallIdx, activeSport]);
+  }, [currentBallIdx, activeSport, hypeSpeedMode, voiceCommentaryEnabled]);
 
   // Passive simulated chat integration
   useEffect(() => {
@@ -379,7 +551,7 @@ export default function LiveMatchRoom({
         <div className="space-y-1">
           <h2 className="text-xl font-black text-white flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
-            IPL Connect Live Match Center
+            IPLVerse Live Match Center
           </h2>
           <p className="text-xs text-slate-400">Automated second-by-second telemetry feed from stadium radar.</p>
         </div>
@@ -685,17 +857,62 @@ export default function LiveMatchRoom({
 
             {activeTab === 'commentary' && (
               <div className="space-y-4" id="match-live-commentary">
-                <div className="rounded-2xl border border-slate-900 bg-slate-955 p-4 flex justify-between items-center">
-                  <span className="text-[10px] font-black tracking-widest text-[#10b981] uppercase font-mono">📢 BALL BY BALL TELEMETRY COMMENTARY</span>
-                  <button 
-                    onClick={() => {
-                      setCustomCommentary([MATCH_BALLS_SIMULATION[activeSport][0]]);
-                      setCurrentBallIdx(0);
-                    }}
-                    className="text-[9px] font-serif border border-slate-800 text-slate-400 px-3 py-1 bg-slate-950 rounded hover:text-white"
-                  >
-                    Reset Sim Loop
-                  </button>
+                <div className="rounded-2xl border border-slate-900 bg-slate-955 p-4 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black tracking-widest text-[#10b981] uppercase font-mono block">📢 BALL BY BALL TELEMETRY COMMENTARY</span>
+                    <p className="text-[9px] text-slate-500 font-extrabold uppercase leading-none">Powered by real-time neural sports synthesis & voice commentary</p>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Voice commentary switch */}
+                    <button
+                      onClick={() => {
+                        setVoiceCommentaryEnabled(!voiceCommentaryEnabled);
+                        // Trigger startup pitch check to wake speech engine
+                        if (!voiceCommentaryEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
+                          try {
+                            const testSound = new SpeechSynthesisUtterance("IPLVerse voice commentary is active!");
+                            testSound.pitch = 1.2;
+                            testSound.rate = 1.1;
+                            window.speechSynthesis.speak(testSound);
+                          } catch (e) {}
+                        }
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-black tracking-wide flex items-center gap-1 transition cursor-pointer ${
+                        voiceCommentaryEnabled 
+                          ? 'bg-yellow-405 border-yellow-500 text-slate-950' 
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {voiceCommentaryEnabled ? '🔊 Voice On' : '🔇 Voice Off'}
+                    </button>
+
+                    {/* Hype speed mode switch */}
+                    <button
+                      onClick={() => {
+                        setHypeSpeedMode(!hypeSpeedMode);
+                        setTimeToNextBall(hypeSpeedMode ? 5 : 1);
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-black tracking-wide flex items-center gap-1 transition cursor-pointer ${
+                        hypeSpeedMode 
+                          ? 'bg-cyan-400 border-cyan-500 text-slate-950' 
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                      title="Deliver balls at 1-second intervals instead of 5-second intervals"
+                    >
+                      ⚡ {hypeSpeedMode ? 'Hype Speed (1s)' : 'Normal (5s)'}
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                        setCustomCommentary([MATCH_BALLS_SIMULATION[activeSport][0]]);
+                        setCurrentBallIdx(0);
+                      }}
+                      className="text-[9px] font-mono border border-slate-800 text-slate-400 px-2.5 py-1.5 bg-slate-950 rounded-lg hover:text-white cursor-pointer"
+                    >
+                      Reset Sim Loop
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3.5 max-h-[450px] overflow-y-auto pr-1">
@@ -1004,6 +1221,129 @@ export default function LiveMatchRoom({
                     <div className="text-center text-[10px] font-black tracking-widest text-[#10b981] bg-emerald-500/5 py-2 border border-emerald-500/10 rounded-lg">
                       ✓ LOYALTY VOTE REGISTERED INDEED! +15 PRESTIGE POINTS GRANTED.
                     </div>
+                  )}
+                </div>
+
+                {/* DYNAMIC STADIUM CROWD ACOUSTICS SYNTHESIZER PANEL */}
+                <div className="rounded-2xl border border-slate-900 bg-slate-1000 p-5 space-y-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono font-black text-cyan-400 tracking-wider uppercase">📢 PREMIUM AUDIO INTERFACE</span>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider">Dynamic Stadium Crowd Acoustics</h4>
+                    <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">Toggle professional digital synthesizer oscillation channels to play real crowd acoustics on demand!</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { id: 'horn', name: '🎺 Horn Blast', icon: '📣', color: 'from-amber-600/20 to-orange-600/30 border-amber-500/20 text-amber-300' },
+                      { id: 'vuvuzela', name: '📯 Vuvuzela', icon: '🌀', color: 'from-cyan-600/20 to-teal-600/30 border-cyan-500/20 text-cyan-300' },
+                      { id: 'cheer', name: '🙌 Crowd Cheer', icon: '🎭', color: 'from-emerald-600/20 to-teal-600/30 border-emerald-500/20 text-emerald-300' },
+                      { id: 'drum', name: '🥁 Stadium Drum', icon: '⚡', color: 'from-fuchsia-600/20 to-purple-600/30 border-fuchsia-500/20 text-fuchsia-300' }
+                    ].map(snd => (
+                      <button
+                        key={snd.id}
+                        onClick={() => playStadiumSynth(snd.id as any)}
+                        className={`relative rounded-xl border p-3 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer hover:scale-105 active:scale-95 bg-gradient-to-b ${snd.color} ${
+                          stadiumAmbientType === snd.id ? 'brightness-150 border-white/60 shadow-lg scale-105' : ''
+                        }`}
+                      >
+                        <span className="text-xl">{snd.icon}</span>
+                        <span className="text-[10px] font-black tracking-wide">{snd.name}</span>
+                        {stadiumAmbientType === snd.id && (
+                          <span className="absolute inset-0 bg-white/5 rounded-xl animate-ping" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* REAL-TIME AI SENTIMENT ANALYSIS METER */}
+                <div className="rounded-2xl border border-slate-900 bg-slate-950/20 p-5 space-y-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono font-black text-rose-400 tracking-wider uppercase">🎭 TELEMETRY SENTIMENT BREAKDOWN</span>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider">Live Fan Emotion Percentages</h4>
+                    <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">Passive artificial intelligence monitoring over stadium emoji streams and text chats in real-time.</p>
+                  </div>
+
+                  {(() => {
+                    const sentiment = getDynamicSentimentPercentages();
+                    return (
+                      <div className="space-y-3 pt-1">
+                        {[
+                          { label: 'Excited 🤩', value: sentiment.excited, color: 'bg-yellow-405' },
+                          { label: 'Celebrating 🎉', value: sentiment.celebrating, color: 'bg-emerald-400' },
+                          { label: 'Nervous 😰', value: sentiment.nervous, color: 'bg-indigo-400' },
+                          { label: 'Shocked 😮', value: sentiment.shocked, color: 'bg-orange-400' },
+                          { label: 'Angry 😡', value: sentiment.angry, color: 'bg-rose-500' }
+                        ].map(emotion => (
+                          <div key={emotion.label} className="space-y-1">
+                            <div className="flex justify-between items-center text-[10px] font-mono leading-none">
+                              <span className="text-slate-300 font-bold">{emotion.label}</span>
+                              <strong className={`${emotion.color.replace('bg-', 'text-')} font-black`}>{emotion.value}%</strong>
+                            </div>
+                            <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                              <motion.div 
+                                className={`h-full ${emotion.color}`}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${emotion.value}%` }}
+                                transition={{ type: "spring", stiffness: 40 }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* COGNITIVE AI MEME GENERATOR SECTION */}
+                <div className="rounded-2xl border border-slate-900 bg-[#0c0a21]/50 p-5 space-y-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono font-black text-purple-400 tracking-wider uppercase">🔥 COGNITIVE STADIUM HUMOR</span>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider">AI Meme Synthesizer</h4>
+                    <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">Render automated funny sports memes instantly relating to recent historical moments.</p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'dhoni_six', name: 'Dhoni 104m Six', emoji: '🚁' },
+                      { id: 'virat_catch', name: 'Kohli Flying Catch', emoji: '🦅' },
+                      { id: 'narine_storm', name: 'Narine Empty fifty', emoji: '😑' },
+                      { id: 'pant_reverse', name: 'Pant Reverse Sweep', emoji: '🤸' }
+                    ].map(btn => (
+                      <button
+                        key={btn.id}
+                        onClick={() => generateStadiumMeme(btn.id)}
+                        className={`px-3 py-2 rounded-xl text-[10px] font-black border tracking-tight flex items-center gap-1.5 transition cursor-pointer select-none ${
+                          customMemeText?.moment === btn.id
+                            ? 'bg-purple-600 border-purple-500 text-white'
+                            : 'bg-slate-950 border-slate-800 text-slate-350 hover:bg-slate-900 hover:text-white'
+                        }`}
+                      >
+                        <span>{btn.emoji}</span> {btn.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {customMemeText && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="border border-purple-500/20 bg-slate-950 rounded-xl p-4 text-center space-y-3 relative overflow-hidden"
+                    >
+                      <span className="absolute top-2 right-2 text-xs opacity-20 select-none">🔥 IPLVERSE MEME</span>
+                      <div className="h-12 w-12 mx-auto rounded-full bg-purple-500/10 flex items-center justify-center text-3xl">
+                        {customMemeText.imageUrl}
+                      </div>
+
+                      <div className="space-y-1 select-all">
+                        <p className="text-[9px] font-mono text-purple-400 uppercase tracking-wilder font-bold">
+                          [ {customMemeText.caption} ]
+                        </p>
+                        <p className="text-xs text-white font-extrabold italic leading-relaxed">
+                          "{customMemeText.punchline}"
+                        </p>
+                      </div>
+                    </motion.div>
                   )}
                 </div>
 

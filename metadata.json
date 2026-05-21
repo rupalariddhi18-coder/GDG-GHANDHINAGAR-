@@ -1,6 +1,6 @@
 {
-  "name": "IPL Bond",
-  "description": "An energetic, social, and emotional real-time IPL cricket fan bonding platform featuring Match Rooms, watch parties, live score momentum charts, interactive friendship swiper matching, and AI-powered chat assistance.",
-  "requestFramePermissions": [],
+  "name": "IPLVerse",
+  "description": "A futuristic virtual IPL universe where fan communities celebrate, react, discuss, predict, and experience every live cricket moment in real-time with AI commentary and advanced social interaction.",
+  "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

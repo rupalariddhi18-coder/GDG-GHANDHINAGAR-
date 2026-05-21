@@ -21,7 +21,7 @@ export default function AIChatbot({ userProfile, onAddPoints, onUnlockBadge }: A
     {
       id: 'welcome',
       role: 'model',
-      text: "⚡ **Greetings, Cricket Superfan!** I am **IPL Connect Sports AI**, your supreme terminal for cricket analytics, stats, and tactical team breakdowns. " +
+      text: "⚡ **Greetings, Cricket Superfan!** I am **IPLVerse Sports AI**, your supreme terminal for cricket analytics, stats, and tactical team breakdowns. " +
         "I have advanced systems tracking the current standings of CSK, MI, RCB, KKR, SRH, and GT. " +
         "Ask me about legendary rivalries, qualification paths, spin masterclasses, or player records! " +
         "How can I serve your cricket heartbeat today?",
@@ -100,7 +100,7 @@ export default function AIChatbot({ userProfile, onAddPoints, onUnlockBadge }: A
       } else if (q.includes('bumrah') || q.includes('malinga') || q.includes('yorker')) {
         mockReplyContent += "🎯 **Yorker Telemetry Comparison**:\n- **Lasith Malinga** utilized a low-sling arm action creating visual confusion for batsmen.\n- **Jasprit Bumrah** commands superior release latitude with an release angle of **21°**, making his blockhole yorkers nearly impossible to sweep!\n- Both MI superstars are the gold standards of death bowling.";
       } else {
-        mockReplyContent += "🏏 **IPL Connect Strategy Analytics**:\n- Supporting teams together build **90% faster fan friendships**!\n- Keep interacting in live matches to trigger prestige points and level up your franchise profile.\n\nMake sure your `GEMINI_API_KEY` is loaded in secrets for full live queries with real-time sports APIs!";
+        mockReplyContent += "🏏 **IPLVerse Strategy Analytics**:\n- Supporting teams together build **90% faster fan friendships**!\n- Keep interacting in live matches to trigger prestige points and level up your franchise profile.\n\nMake sure your `GEMINI_API_KEY` is loaded in secrets for full live queries with real-time sports APIs!";
       }
 
       const errorReply: AIChatMessage = {
@@ -185,7 +185,7 @@ export default function AIChatbot({ userProfile, onAddPoints, onUnlockBadge }: A
                 <Zap className="h-4.5 w-4.5 text-yellow-400 animate-pulse" />
               </div>
               <div>
-                <h3 className="text-xs sm:text-sm font-black text-white">IPL Connect Sports Guru AI</h3>
+                <h3 className="text-xs sm:text-sm font-black text-white">IPLVerse Sports Guru AI</h3>
                 <span className="text-[9px] text-[#10b981] font-bold block uppercase tracking-wider">● REAL-TIME INTEL ONLINE</span>
               </div>
             </div>

@@ -50,7 +50,7 @@ export default function CommunitySection({
       team: newPostTeam,
       author: userProfile.username || 'Arena_Striker18',
       avatar: '🏅',
-      badge: userProfile.favoriteTeam === newPostTeam ? 'Ultimate Supporter' : 'Connect Rookie',
+      badge: userProfile.favoriteTeam === newPostTeam ? 'Ultimate Supporter' : 'Verse Rookie',
       content: newPostContent
     });
 
@@ -98,7 +98,7 @@ export default function CommunitySection({
         SRH: "Pat Cummins has built a boundaries-heavy highway at Hyderabad. Absolute power hitting! 🧡 #OrangeArmy",
         GT: "Silent assassins of Gujarat! Gill's cover drives are just pure aesthetic satisfaction. ⚡ #AavaDe"
       };
-      setNewPostContent(fallbacks[newPostTeam] || "IPL Connect is our virtual stadium family! Vibe checks are matching! 🏏🔥");
+      setNewPostContent(fallbacks[newPostTeam] || "IPLVerse is our virtual stadium family! Vibe checks are matching! 🏏🔥");
     } finally {
       setAiGenerating(false);
     }

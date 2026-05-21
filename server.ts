@@ -20,12 +20,12 @@ if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
         }
       }
     });
-    console.log("IPL Connect: Gemini AI initialized successfully.");
+    console.log("IPLVerse: Gemini AI initialized successfully.");
   } catch (err) {
-    console.error("IPL Connect: Error initializing Gemini AI:", err);
+    console.error("IPLVerse: Error initializing Gemini AI:", err);
   }
 } else {
-  console.warn("IPL Connect: GEMINI_API_KEY is not defined or is placeholder. Falling back to Mock Sports AI.");
+  console.warn("IPLVerse: GEMINI_API_KEY is not defined or is placeholder. Falling back to Mock Sports AI.");
 }
 
 async function startServer() {
@@ -35,7 +35,7 @@ async function startServer() {
   // Body parser
   app.use(express.json());
 
-  // 1. API: Sports AI Chatbot Route (with custom prompt engineering for IPL Connect)
+  // 1. API: Sports AI Chatbot Route (with custom prompt engineering for IPLVerse)
   app.post("/api/chat", async (req, res) => {
     const { message, history } = req.body;
     
@@ -44,7 +44,7 @@ async function startServer() {
     }
 
     const systemInstruction = 
-      "You are 'IPL Connect Sports Guru', the ultimate cricket analyst and sports psychologist of the IPL Connect Community. " +
+      "You are 'IPLVerse Sports Guru', the ultimate cricket analyst and commentary oracle of the IPLVerse Community. " +
       "You provide extremely funny, witty, energetic, and highly analytical IPL commentary, predictions, stats, and historical trivia.\n\n" +
       "Current Context/Date: May 2026.\n" +
       "Your critical mandate: Promote cricket friendships and bonding. When fans ask for comparisons or debate players " +
@@ -98,13 +98,13 @@ async function startServer() {
       let responseText = "";
 
       if (upperMsg.includes("DHONI") || upperMsg.includes("KOHLI") || upperMsg.includes("CHASE") || upperMsg.includes("COMPLETION")) {
-        responseText = `🦁 **IPL Bond Cricket Guru (AI simulation)**:\n\nThis debate is as legendary as they come!\n\n* **Virat Kohli**: Represents pure focus, passion, and chasing metrics. His second-innings average of **63.4** under scoreboard pressure makes him a chase master.\n* **MS Dhoni**: Represents supreme tactical ice-cool composure. Even in 2026, his finishing rate in the 20th Over remains a masterclass (having struck *114 sixes* at extreme pressure moments!).\n\n**Guru Bond Conclusion**: They represent the yin and yang of Indian cricket. The best friendships appreciate BOTH!`;
+        responseText = `🦁 **IPLVerse Cricket Guru (AI simulation)**:\n\nThis debate is as legendary as they come!\n\n* **Virat Kohli**: Represents pure focus, passion, and chasing metrics. His second-innings average of **63.4** under scoreboard pressure makes him a chase master.\n* **MS Dhoni**: Represents supreme tactical ice-cool composure. Even in 2026, his finishing rate in the 20th Over remains a masterclass (having struck *114 sixes* at extreme pressure moments!).\n\n**Guru Verse Conclusion**: They represent the yin and yang of Indian cricket. The best friendships appreciate BOTH!`;
       } else if (upperMsg.includes("PLAYOFF") || upperMsg.includes("POINTS") || upperMsg.includes("TABLE") || upperMsg.includes("STANDINGS")) {
-        responseText = `📊 **IPL Bond Standings breakdown (AI simulation)**:\n\nHere is how the top franchises stack up as of May 2026:\n\n- **1. KKR**: Dominating with **16 Pts** and a blistering Net Run Rate of \`+1.350\`.\n- **2. CSK**: Hovering closely on **14 Pts**. A win tonight over MI seals their ticket to the playoffs!\n- **3. MI & GT**: Locked in a tense mid-table struggle on **12 Pts** each. Every single delivery from here is a knockout match!`;
+        responseText = `📊 **IPLVerse Standings breakdown (AI simulation)**:\n\nHere is how the top franchises stack up as of May 2026:\n\n- **1. KKR**: Dominating with **16 Pts** and a blistering Net Run Rate of \`+1.350\`.\n- **2. CSK**: Hovering closely on **14 Pts**. A win tonight over MI seals their ticket to the playoffs!\n- **3. MI & GT**: Locked in a tense mid-table struggle on **12 Pts** each. Every single delivery from here is a knockout match!`;
       } else if (upperMsg.includes("BUMRAH") || upperMsg.includes("MALINGA") || upperMsg.includes("YORKER") || upperMsg.includes("BOWLING")) {
         responseText = `🌀 **Death Bowling Telemetry (AI simulation)**:\n\nBoth MI bowling icons redefined the blockhole yorker:\n\n* **Lasith Malinga**: Used a slingy 38° arm angle release, which meant the batsman saw the ball extremely late from behind visual markers.\n* **Jasprit Bumrah**: Commands an extremely high release hyper-extension. This results in standard delivery speeds of **145 km/h** crashing straight into toe-crush zones.\n\n*Fun Fact*: Bumrah actually attributes much of his analytical growth to hours spent talking tactics with Malinga at watch party tables!`;
       } else {
-        responseText = `🏏 **IPL Bond Analytical Assistant (AI simulation)**:\n\nWelcome to your cricket intelligence hub. I am online and analyzing ball by ball!\n\n* **Current Vibe**: CSK is chasing a mammoth target against MI. The community atmosphere is 100% active with real-time fan bonding.\n* **Bond Recommendation**: Go to the **Lobby tab**, swipe on suggested partners who support the opposite team, and build a *cricket friendship* to unlock the **Golden Friendship Bracelet Badge**!\n\n*(To activate live Gemini models, load your \`GEMINI_API_KEY\` into the platform Secrets menu!)*`;
+        responseText = `🏏 **IPLVerse Analytical Assistant (AI simulation)**:\n\nWelcome to your cricket intelligence hub. I am online and analyzing ball by ball!\n\n* **Current Vibe**: CSK is chasing a mammoth target against MI. The community atmosphere is 100% active with real-time fan bonding.\n* **Verse Recommendation**: Go to the **Lobby tab**, swipe on suggested partners who support the opposite team, and build a *cricket friendship* to unlock the **Golden Friendship Bracelet Badge**!\n\n*(To activate live Gemini models, load your \`GEMINI_API_KEY\` into the platform Secrets menu!)*`;
       }
 
       await new Promise(resolve => setTimeout(resolve, 500));
